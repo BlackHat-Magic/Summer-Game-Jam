@@ -2,24 +2,58 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+// #include <SDL3_image/SDL_image.h>
 
 static SDL_Window* window = NULL;
 static SDL_Renderer* renderer = NULL;
+static SDL_Texture* texture = NULL;
+static int texture_width = 0;
+static int texture_height = 0;
+
+#define WINDOW_WIDTH 640
+#define WINDOW_HEIGHT 480
 
 static SDL_FPoint points[500];
 
 // runs at startup
 SDL_AppResult SDL_AppInit (void** appstate, int argc, char* argv[]) {
-    SDL_SetAppMetadata ("Uh", "1.0", "xyz.lukeh.summer-game-jam-2025");
 
+    // ===== CREATE WINDOW =====
+    SDL_SetAppMetadata ("Uh", "1.0", "xyz.lukeh.summer-game-jam-2025");
     if (!SDL_Init (SDL_INIT_VIDEO)) {
         SDL_Log ("Couldn't initialize SDL: %s", SDL_GetError ());
         return (SDL_APP_FAILURE);
     }
-    if (!SDL_CreateWindowAndRenderer ("Uh", 640, 480, 0, &window, &renderer)) {
+    if (!SDL_CreateWindowAndRenderer ("Uh", WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer)) {
         SDL_Log ("Couldn't create window/renderer: %s", SDL_GetError ());
         return (SDL_APP_FAILURE);
     }
+    // ===== END CREATE WINDOW =====
+
+    // ===== TEXTURE =====
+    SDL_Surface* surface = NULL;
+    char* file_path = NULL;
+    SDL_asprintf (&file_path, "%samongus.png", SDL_GetBasePath ());
+    surface = SDL_LoadBMP (file_path);
+    if (!surface) {
+        SDL_Log ("Couldn't load bitmap: %s", SDL_GetError ());
+        return (SDL_APP_FAILURE);
+    }
+
+    SDL_free (file_path);
+
+    texture_width = surface->w;
+    texture_height = surface->h;
+
+    texture = SDL_CreateTextureFromSurface (renderer, surface);
+    if (!texture) {
+        SDL_Log ("Couldn't create static texture: %s", SDL_GetError ());
+        return (SDL_APP_FAILURE);
+    }
+
+    // done with this; the texture has a copy of the pixels now
+    SDL_DestroySurface (surface);
+    // ===== END TEXTURE =====
 
     // random points
     for (int i = 0; i < SDL_arraysize (points); i++) {
@@ -39,7 +73,7 @@ SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
     return (SDL_APP_CONTINUE);
 }
 
-// runs once each frame
+// runs once each frsdl3 load png instead of bmpame
 SDL_AppResult SDL_AppIterate (void* appstate) {
     // time elapsed seconds
     const double now = ((double) SDL_GetTicks ()) / 1000.0;
@@ -81,6 +115,31 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
     SDL_RenderLine (renderer, 0, 0, 650, 480);
     SDL_RenderLine (renderer, 0, 480, 640, 0);
     // ===== END LINES =====
+
+    // ===== TEXTURE =====
+    SDL_FRect dst_rect;
+    const Uint64 now2 = (Uint64) now * 1000;
+    const float direction = ((now2 % 2000) >= 1000) ? 1.0f : -1.0f;
+    const float scale = ((float) (((int) (now2 % 1000)) - 500) / 500.0f) * direction;
+    
+    dst_rect.x = (100.0f * scale);
+    dst_rect.y = 0.0f;
+    dst_rect.w = (float) texture_width;
+    dst_rect.h = (float) texture_height;
+    SDL_RenderTexture (renderer, texture, NULL, &dst_rect);
+
+    dst_rect.x = ((float) (WINDOW_WIDTH - texture_width)) / 2.0f;
+    dst_rect.y = ((float) (WINDOW_HEIGHT - texture_height)) / 2.0f;
+    dst_rect.w = (float) texture_width;
+    dst_rect.h = (float) texture_height;
+    SDL_RenderTexture (renderer, texture, NULL, &dst_rect);
+
+    dst_rect.x = ((float) (WINDOW_WIDTH - texture_width)) / 2.0f;
+    dst_rect.y = (float) (WINDOW_HEIGHT - texture_height);
+    dst_rect.w = (float) texture_width;
+    dst_rect.h = (float) texture_height;
+    SDL_RenderTexture (renderer, texture, NULL, &dst_rect);
+    // ===== END TEXTURE =====
 
     // put the newly-cleared renderer on the screen
     SDL_RenderPresent (renderer);
