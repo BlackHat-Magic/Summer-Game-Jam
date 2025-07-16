@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-// #include <SDL3_image/SDL_image.h>
+#include <SDL3_image/SDL_image.h>
 
 static SDL_Window* window = NULL;
 static SDL_Renderer* renderer = NULL;
@@ -33,8 +33,9 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char* argv[]) {
     // ===== TEXTURE =====
     SDL_Surface* surface = NULL;
     char* file_path = NULL;
-    SDL_asprintf (&file_path, "%samongus.png", SDL_GetBasePath ());
-    surface = SDL_LoadBMP (file_path);
+    SDL_asprintf (&file_path, "%samongus.bmp", SDL_GetBasePath ());
+    SDL_Log ("File path:\t%s", file_path);
+    surface = IMG_Load (file_path);
     if (!surface) {
         SDL_Log ("Couldn't load bitmap: %s", SDL_GetError ());
         return (SDL_APP_FAILURE);
