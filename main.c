@@ -1,5 +1,6 @@
 #define SDL_MAIN_USE_CALLBACKS 1 // use callbacks instead of main
 
+#include <stdio.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
@@ -34,7 +35,6 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char* argv[]) {
     SDL_Surface* surface = NULL;
     char* file_path = NULL;
     SDL_asprintf (&file_path, "%samongus.bmp", SDL_GetBasePath ());
-    SDL_Log ("File path:\t%s", file_path);
     surface = IMG_Load (file_path);
     if (!surface) {
         SDL_Log ("Couldn't load bitmap: %s", SDL_GetError ());
@@ -119,7 +119,7 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
 
     // ===== TEXTURE =====
     SDL_FRect dst_rect;
-    const Uint64 now2 = (Uint64) now * 1000;
+    const Uint64 now2 = SDL_GetTicks();
     const float direction = ((now2 % 2000) >= 1000) ? 1.0f : -1.0f;
     const float scale = ((float) (((int) (now2 % 1000)) - 500) / 500.0f) * direction;
     
