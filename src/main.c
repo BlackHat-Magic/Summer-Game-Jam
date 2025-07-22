@@ -15,7 +15,37 @@ typedef struct {
     SDL_Window* window;
     SDL_GPUDevice* device;
     SDL_GPUGraphicsPipeline* pipeline;
+    Uint64 start_time;
 } AppContext;
+
+// create y-roation matrix (theta in radians)
+static void create_y_rotation_matrix (float theta, float* matrix) {
+    float c = cosf (theta);
+    float s = sinf (theta);
+    matrix[0] = c;      matrix[1] = 0.0f;   matrix[2] = s;      matrix[3] = 0.0f;
+    matrix[4] = 0.0f;   matrix[5] = 1.0f;   matrix[6] = 0.0f;   matrix[7] = 0.0f;
+    matrix[8] = -s;     matrix[9] = 0.0f;   matrix[10] = c;     matrix[11] = 0.0f;
+    matrix[12] = 0.0f;  matrix[13] = 0.0f;  matrix[14] = 0.0f;  matrix[15] = 1.0f;
+}
+
+static void multiply_ortho (float* matrix, float left, float right, float bottom, float top, float near, float far) {
+    float ortho[16] = {
+        2.0f / (right - left), 0, 0, 0,
+        0, 2.0f / (top - bottom), 0, 0,
+        0, 0, 1.0f / (far - near), 0,
+        -(right + left) / (right - left), -(top + bottom) / (top - bottom), -(far + near) / (far - near), 1
+    };
+    float result[16];
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            result[i*4 + j] = 0;
+            for (int k = 0; k < 4; k++) {
+                result[i * 4 + j] += ortho[i * 4 + k] * matrix[k * 4 + j];
+            }
+        }
+    }
+    memcpy (matrix, result, sizeof (result));
+}
 
 // helper: load binary file
 static Uint8* load_file (const char* path, size_t* size) {
@@ -79,7 +109,7 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
         .num_samplers = 0,
         .num_storage_buffers = 0,
         .num_storage_textures = 0,
-        .num_uniform_buffers = 0
+        .num_uniform_buffers = 1
     };
     SDL_GPUShader* vert_shader = SDL_CreateGPUShader (device, &vert_info);
     free (vert_code);
@@ -131,6 +161,7 @@ SDL_AppResult SDL_AppInit (void** appstate, int argc, char** argv) {
     context->window = window;
     context->device = device;
     context->pipeline = pipeline;
+    context->start_time = SDL_GetTicksNS ();
     *appstate = context;
 
     return SDL_APP_CONTINUE;
@@ -146,6 +177,13 @@ SDL_AppResult SDL_AppEvent (void* appstate, SDL_Event* event) {
 // runs every frame
 SDL_AppResult SDL_AppIterate (void* appstate) {
     AppContext* context = (AppContext*) appstate;
+
+    // time elapsed seconds
+    Uint64 now = SDL_GetTicksNS ();
+    float elapsed_seconds = (float) (now - context->start_time) / 1e9f;
+    float angle = elapsed_seconds * (M_PI / 2.0f);
+    float matrix[16];
+    create_y_rotation_matrix (angle, matrix);
 
     // Acquire command buffer
     SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer (context->device);
@@ -178,6 +216,14 @@ SDL_AppResult SDL_AppIterate (void* appstate) {
         // bind gpu pipeline and draw triangle
         // 3 vertices; no vertex buffer needed since vertex shader generates them
         SDL_BindGPUGraphicsPipeline (pass, context->pipeline);
+
+        multiply_ortho(matrix, -1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
+        SDL_PushGPUVertexUniformData(cmd, 0, matrix, sizeof (matrix));
+
+        // float identity[16] = {1, 0, 0, 0, 0, 1, 0 ,0, 0, 0, 1, 0, 0, 0, 0, 1};
+        // SDL_PushGPUVertexUniformData(cmd, 0, identity, sizeof (identity));
+
+        // draw
         SDL_DrawGPUPrimitives (pass, 3, 1, 0, 0);
 
         SDL_EndGPURenderPass(pass);
