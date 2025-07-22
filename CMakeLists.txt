@@ -23,7 +23,7 @@ if(COMPILE_SHADERS)
             set(OUTPUT ${SHADER_OUTPUT_DIR}/${SHADER}.spv)
             add_custom_command(
                 OUTPUT ${OUTPUT}
-                COMMAND ${GLSLANG_VALIDATOR} -G -o ${OUTPUT} ${INPUT}
+                COMMAND ${GLSLANG_VALIDATOR} -G -o ${OUTPUT} ${INPUT} --target-env vulkan1.3
                 DEPENDS ${INPUT}
                 COMMENT "Compiling shader ${SHADER}"
             )
@@ -38,7 +38,7 @@ endif()
 add_executable(space-pirates src/main.c)
 
 # link sdl3
-target_link_libraries(space-pirates PRIVATE SDL3::SDL3)
+target_link_libraries(space-pirates PRIVATE SDL3::SDL3 m)
 
 # include dirs
 target_include_directories(space-pirates PRIVATE ${SDL3_INCLUDE_DIRES})
